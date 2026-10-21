@@ -5,7 +5,7 @@ dessin_process.py
 
 Fonctions de traitement des dessins.
 
-Ce module joue le même rôle que ``image_process.py`` dans le TP2 :
+Ce module joue le même rôle que "image_process.py" dans le TP2 :
 il contient uniquement les traitements sur les tableaux NumPy et ne dépend
 pas de l'interface graphique Qt.
 
@@ -21,6 +21,8 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+
+
 
 
 # =====================================================================
@@ -64,19 +66,30 @@ def paint_disk(bitmap, x, y, radius):
     # 1. Construire les coordonnées des pixels de la boîte.
     #    Vous pouvez utiliser np.ogrid.
     #
-    rr, cc = ...
+    rr, cc = np.ogrid[r0:r1, c0:c1]
 
     # 2. Construire un masque booléen correspondant aux pixels
     #    situés dans le disque :
     #
     # (ligne - y)^2 + (colonne - x)^2 <= radius^2
     #
-    mask = ...
+
+    mask = np.zeros((r1-r0, c1-c0), dtype=bool)
+
+    for i in range(r0, r1):
+        for j in range(c0, c1):
+
+            distance_carre = (i-r)**2 + (j-c)**2
+
+            if distance_carre <= radius**2:
+                mask[i-r0, j-c0] = True
+  
+    #mask = (rr - r)**2 + (cc - c)**2 <= radius**2
+
 
     # 3. Mettre les pixels correspondants à 1.
-    #
-    bitmap[...] = ...
-
+    
+    bitmap[r0:r1, c0:c1][mask] = 1
 
 #Complétez la fonction :
 
@@ -95,25 +108,26 @@ def paint_segment(bitmap, p0, p1, radius):
 
     # 1. Calculer la distance entre p0 et p1.
     #
-    distance = ...
+    distance = ((x0-x1)**2+(y0-y1)**2)**(1/2) #distance euclidienne
 
     # 2. Choisir la distance maximale entre deux centres
     #    de disques successifs.
-    step = ...
 
-    # 3. Déterminer le nombre de points intermédiaires en utilisant ceil.
-    #
-    n = max(2, int(...))
+    step = max(radius, 0.5)
+
+    # 3. Déterminer le nombre de points intermédiaires en utilisant ceil (arrondi un nbre vers l'entier le plus petit ou egal).
+
+    n = max(2, int(np.ceil(distance / step)) + 1)
 
     # 4. Construire les coordonnées interpolées avec np.linspace.
     #
-    xs = ...
-    ys = ...
+    xs = np.linspace(x0, x1, n)
+    ys = np.linspace(y0, y1, n)
 
     # 5. Dessiner un disque en chacun de ces points.
-    #
+    #arguments de paint disk: bitmap, x, y, radius
     for x, y in zip(xs, ys):
-         paint_disk(...)
+         paint_disk(bitmap, x, y, radius)
 
 ## Pour tester vos fonctions
 def test_paint_disk():
@@ -139,6 +153,7 @@ def test_paint_disk():
     plt.axis("off")
     plt.show()
 
+#test_paint_disk()
 
 def test_paint_segment():
 
@@ -163,7 +178,8 @@ def test_paint_segment():
     plt.axis("off")
     plt.show()
 
-    
+#test_paint_segment()    
+
 # =====================================================================
 # RECENTRAGE ET CONVERSION DES DONNÉES QUICKDRAW
 # =====================================================================
@@ -182,26 +198,26 @@ def compute_centering_parameters(width, height, size=28, margin=2):
 
     # Longueur disponible entre les deux marges.
     # Attention : les pixels sont indexes de 0 a size-1.
-    usable = ...  # TODO
+    usable = 28-1-2*margin  # longueur disponible entre les 2 marges
 
     if usable <= 0:
         raise ValueError("Marge trop grande.")
 
     # Choisir scale pour que :
     # max(width, height) * scale = usable
-    scale = ...   # TODO
+    scale = usable/(max(width, height))   
 
     # Dimensions du dessin apres redimensionnement
-    scaled_width = ...   # TODO
-    scaled_height = ...  # TODO
+    scaled_width = scale*width  
+    scaled_height = scale*height  
 
     # Decalage = marge + moitie de l'espace libre
-    offx = ...    # TODO
-    offy = ...    # TODO
+    offx = margin +0.5*(usable - scaled_width)     
+    offy = margin +0.5*(usable - scaled_height) 
 
     return scale, offx, offy
 
-
+###############
 
 def image_converter(strokes, size=28, margin=2, radius=1.0):
     """
@@ -286,12 +302,13 @@ def image_converter(strokes, size=28, margin=2, radius=1.0):
         if len(points) >= 2:
             # Trait blanc 
             for p0, p1 in zip(points[:-1], points[1:]):
-                paint_segment(...)
+                paint_segment(bitmap, p0, p1, radius)
 
         # Sinon on crée un petit disque autour de (x,y)
         elif len(points) == 1:
             # petit disque
-            paint_disk(...)
+            x, y = points[0]
+            paint_disk(bitmap, x, y, radius)
          
     return np.uint8(np.clip(bitmap, 0.0, 1.0) * 255)
 
@@ -455,3 +472,4 @@ def prepare_for_model(
     ] = resized
 
     return out
+
